@@ -1,0 +1,18 @@
+Buildfile: build.xml
+
+deploy:
+    [input] Please enter Folder location, with respect to present directory, to be deployed 
+
+BUILD FAILED
+/home/aia/Test/build.xml:54: Failed to read input from Console.
+
+Total time: 0 seconds
+Buildfile: build.xml
+
+deploy:
+    [input] Please enter Folder location, with respect to present directory, to be deployed 
+
+BUILD FAILED
+/home/aia/Test/build.xml:54: Failed to read input from Console.
+
+Total time: 0 seconds

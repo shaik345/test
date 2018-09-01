@@ -1,0 +1,241 @@
+<project name="soaDeployAll" basedir="." default="help">
+   <property environment="env"/>
+   <property name ="sca.location" value ="${basedir}"/> 
+   <path id="classpath">
+      <!--To refer the all the jars inside folder lib-->
+      <fileset dir="/opt/aia/Middleware_wls/modules/org.apache.ant_1.7.1/lib">
+         <include name="**/*.jar"/>
+      </fileset>
+   </path>
+   <taskdef resource="net/sf/antcontrib/antcontrib.properties" uri="http://ant-contrib.sourceforge.net">
+      <classpath>
+         <!--<pathelement location="/u01/oracle/Middleware/Oracle_Home/jdeveloper/ant/lib/ant-contrib-1.0b3.jar"/>-->
+		 <pathelement location="/home/aia/Test/ant-contrib-1.0b3.jar"/>
+      </classpath>
+   </taskdef>
+   <taskdef resource="net/sf/antcontrib/antlib.xml">
+      <classpath>
+         <!--<pathelement location="/u01/oracle/Middleware/Oracle_Home/jdeveloper/ant/lib/ant-contrib-1.0b3.jar"/>-->
+		 <pathelement location="/home/aia/Test/ant-contrib-1.0b3.jar"/>
+      </classpath>
+   </taskdef>
+   <!--================================================================================-->
+   <!--TARGET: help-->
+   <!--================================================================================-->
+   <target name="help">
+      <echo>
+	  Usable targets are:
+           
+    help                   - This help
+    deploy                 - Packages and deploys MDS and composites in 'ProcessList.txt' 
+	------------------------------------------------------
+        |   Usage example:                                  |
+        ------------------------------------------------------
+                                 
+    export ANT_HOME=/u01/oracle/Middleware/Oracle_Home/oracle_common/modules/org.apache.ant_1.9.2
+	export ANT_HOME=/opt/aia/Middleware_wls/modules/org.apache.ant_1.7.1
+    export PATH=${ANT_HOME}/bin:$PATH
+    export CURRENT_FOLDER=`pwd`
+                         
+    ant -f build.xml deploy
+
+	</echo>
+   </target>
+		   <!--================================================================================-->
+		   <!--Check for an load property files-->
+		   <!--================================================================================-->
+			   <available file="build.properties" property="file.exists" value="true"/>
+			   <fail unless="file.exists" message="ERROR: Filename 'build.properties' does not exist."/>
+			   <property file="build.properties"/>
+		   <!--================================================================================-->
+		   <!--TARGET: deployComposites-->
+		   <!--================================================================================-->
+   <target name="deploy">
+      <!--input message="Please enter Folder location, with respect to present directory, to be deployed " addproperty="location"/-->
+       
+           <!--if>
+                 <available file="/aiaapp/oracle/fmw12c/aia/Deploy/Deploy/deploymentscript/Deployfolder/MDS"/>
+                <then>
+                  <echo>===================================================================================
+                                        MDS Deployment Started
+===================================================================================</echo>
+
+              <zip destfile="${basedir}/${location}/MDS/deploy/mdsapplication.jar" compress="false">
+                 <fileset dir="${basedir}/${location}/MDS/apps/" includes="**/*" />
+              </zip>
+       
+              <zip destfile="${basedir}/${location}/MDS/deploy/mdsapplication.zip" compress="false">
+                <fileset dir="${basedir}/${location}/MDS/deploy" includes="*.jar" />
+              </zip>
+
+                 <ant antfile="${oracle.home}/bin/ant-sca-deploy.xml" target="deploy" inheritall="false">
+                     <property name="user" value="${server.user}"/>
+                     <property name="password" value="${server.password}"/>
+                     <property name="serverURL" value="${serverURL}/soa-infra/deployer"/>
+                     <property name="sarLocation" value="${basedir}/${location}/MDS/deploy/mdsapplication.zip"/>
+                     <property name="overwrite" value="true"/>
+
+                 </ant>
+                 <echo>===================================================================================
+                                        MDS Deployment Completed
+===================================================================================</echo>
+               <sleep seconds="3"/>
+                </then>
+              <else>                 
+                  <echo>===================================================================================
+                                      MDS Deployment Skipped
+===================================================================================
+                 </echo>
+              </else>
+          </if-->
+        
+           <if>
+               <available file="./${project.file.name}"/>
+                <then>
+      <loadfile property="allprocesses" srcFile="./${project.file.name}"/>
+      <var name="processCount" value="0"/>
+      <var name="errorProcessNames" value="(none)"/>
+      <if>
+         <equals arg1="${replace.env.prop}" arg2="true"/>
+         <then>
+            <antcall target="replace"/>
+         </then>
+      </if>
+        <echo>===================================================================================
+                                       Composite Deployment Started
+===================================================================================</echo>
+
+      <trycatch property="tryName" reference="exception_ref">
+         <try>
+            <for list="${allprocesses}" param="processName" delimiter="${line.separator}">
+               <sequential>               
+
+                  <propertyregex property="composite.name" input="@{processName}" regexp="([^,]+),([^,]+),([^,]+),([^,]+),([^,]*)" select="\1" override="true"/>
+                  <propertyregex property="composite.partition" input="@{processName}" regexp="([^,]+),([^,]+),([^,]+),([^,]+),([^,]*)" select="\2" override="true"/>
+                  <propertyregex property="composite.revision" input="@{processName}" regexp="([^,]+),([^,]+),([^,]+),([^,]+),([^,]*)" select="\3" override="true"/>
+                  <propertyregex property="default.composite" input="@{processName}" regexp="([^,]+),([^,]+),([^,]+),([^,]+),([^,]*)" select="\4" override="true"/>
+                  <propertyregex property="project.cfgplan" input="@{processName}" regexp="([^,]+),([^,]+),([^,]+),([^,]+),([^,]*)" select="\5" override="true"/>
+
+                  <math result="processCount" operand1="${processCount}" operation="+" operand2="1" datatype="int"/>
+				  <!--replace 
+					dir="${location}/${composite.name}"
+                                        propertyFile="build.properties">
+                                  <include name ="SOA/composite.xml"/>
+                                  <include name ="${project.cfgplan}"/>
+                                  <include name ="**/*.jca"/>
+				  <replacefilter 
+					token="@SOAserverURL@" 
+					property="SOAserverURL"/>
+                                  <replacefilter
+                                        token="@MFTserverURL@"
+                                        property="MFTserverURL"/>
+                                   <replacefilter
+                                        token="@MFTserver.user@"
+                                        property="MFTserver.user"/>
+                                  <replacefilter
+                                        token="@MFTserver.password@"
+                                        property="MFTserver.password"/>
+                       
+                                  <replacefilter
+                                        token="@bpel.preference.environment@"
+                                        property="bpel.preference.environment"/>
+				  
+                                  <replacefilter>
+                                        <replacetoken>/home/depuser/MDMGoldenCopy</replacetoken>
+                                        <replacevalue>/Smarttrial_ODR/3/Dev/MDM/DELIMITED/dropzone</replacevalue>
+                                  </replacefilter>
+                                  <replacefilter>
+                                        <replacetoken>/home/infa/smarttrial_ODR/3/Dev/MDM/DELIMITED/dropzone</replacetoken>
+                                        <replacevalue>/Smarttrial_ODR/3/Dev/MDM/DELIMITED/dropzone</replacevalue>
+                                  </replacefilter>
+
+
+				</replace-->
+                  <echo>
+				    ===================================================================================
+                                         PACKAGE COMPOSITE #${processCount}: ${composite.name} ${composite.revision} ${project.cfgplan}
+                                ===================================================================================
+				  </echo>
+                  <ant antfile="${oracle.home}/bin/ant-sca-package.xml" target="package" inheritall="false">
+                     <property name="oracle.home" value="${oracle.home}"/>
+                     <property name="compositeDir" value="${project.cfgplan}/${composite.name}"/>
+                     <property name="scac.application.home" value="${project.cfgplan}/${composite.name}"/>
+                     <property name="scac.input" value="${project.cfgplan}/${composite.name}/SOA/composite.xml"/>
+                     <property name="compositeName" value="${composite.name}"/>
+                     <property name="revision" value="${composite.revision}"/>
+                     <property name="java.passed.home" value="${java.home}"/>
+                     <property name="wl_home" value="${wl_home}"/>
+                  </ant>
+                  <echo>
+				     ================================================================================
+                                          DEPLOY COMPOSITE #${processCount}: ${composite.name} 
+                                 ================================================================================
+				</echo>
+                  
+                   <if>
+                     <contains string="${project.cfgplan}" substring="xml"/>
+                       <then>
+                   <ant antfile="${oracle.home}/bin/ant-sca-deploy.xml" target="deploy" inheritall="false">
+                     <property name="user" value="${server.user}"/>
+                     <property name="password" value="${server.password}"/>
+                     <property name="serverURL" value="${serverURL}/soa-infra/deployer"/>
+                    <property name="sarLocation" value="${basedir}/${location}/${composite.name}/deploy/sca_${composite.name}_rev${composite.revision}.jar"/>
+                     <property name="overwrite" value="true"/>                     
+                     <property name="configplan" value="${basedir}/${location}/${composite.name}/${project.cfgplan}"/>
+                     <property name="partition" value="${composite.partition}"/>
+                   </ant>
+                       </then>
+                  <else>
+                    <ant antfile="${oracle.home}/bin/ant-sca-deploy.xml" target="deploy" inheritall="false">
+                     <property name="user" value="${server.user}"/>
+                     <property name="password" value="${server.password}"/>
+                     <property name="serverURL" value="${serverURL}/soa-infra/deployer"/>
+                    <property name="sarLocation" value="${project.cfgplan}/${composite.name}/deploy/sca_${composite.name}_rev${composite.revision}.jar"/>
+                     <property name="overwrite" value="true"/>
+                     <property name="partition" value="${composite.partition}"/>
+                    </ant> 
+                  </else>
+                 </if> 
+                  <sleep seconds="3"/>
+                    
+               </sequential>
+            </for>
+         </try>
+         <catch>
+            <property name="exception" refid="exception_ref"/>
+            <property name="message" value="ERROR IN TRYCATCH BLOCK:${line.separator}${exception}"/>
+            <echo/>
+            <echo message="${message}"/>
+            <var name="errorProcessNames" value="${composite.name}"/>
+         </catch>
+      </trycatch>
+       
+      <if>
+         <equals arg1="${errorProcessNames}" arg2="(none)"/>
+         <then>
+            
+      <echo>**************************************************************
+                    
+                    * Composite Deployment : Successful
+                    
+**************************************************************</echo>
+
+         </then>
+      <else>
+
+      <echo>**************************************************************
+                    *  Composite Deployment  : Failed
+                    *  FAILED PROCESS        : ${errorProcessNames}
+                    *
+**************************************************************</echo>
+       </else>
+      </if>
+     </then>
+   <else>
+     <echo> ===================================================================================
+                               Composite Deployment Skipped
+===================================================================================</echo>
+   </else>
+  </if>
+   </target>
+</project>
